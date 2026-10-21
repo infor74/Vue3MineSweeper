@@ -1,0 +1,49 @@
+{
+  "compilerOptions": {
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "paths": {
+      "~class/*": [
+        "./src/class/*"
+      ],
+      "~components/*": [
+        "./src/components/*"
+      ],
+      "~/*": [
+        "./src/*"
+      ],
+      "@class/*": [
+        "src/class/*"
+      ],
+      "@components/*": [
+        "src/components/*"
+      ],
+      "@/*": [
+        "src/*"
+      ],
+      "@types/*": [
+        "src/types/*"
+      ],
+      "@utils/*": [
+        "src/utils/*"
+      ]
+    },
+    "skipLibCheck": true,
+    // 不输出任何编译后的文件，只进行类型检查
+    "noEmit": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.vue",
+    "**/*.d.ts"
+  ],
+  // 从编译中排除的文件列表
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
