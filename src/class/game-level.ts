@@ -1,4 +1,7 @@
 export const GameLevel = {
+  test: {
+    r: 3, c: 3, m: 0, text: "Test",
+  },
   easy: {
     r: 9, c: 9, m: 10, text: "Easy",
   },

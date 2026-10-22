@@ -1,4 +1,5 @@
-﻿import Game, { GameStatus } from '@class/game'
+import type Game from '@class/game'
+import { GameStatus } from '@class/game-status'
 import { recordAdjacentCellsLocation } from "@utils/utils";
 
 enum CellMark {

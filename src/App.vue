@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, toRaw } from "vue";
-import Game, { GameStatus } from "@/class/game";
+import Game from "@/class/game";
+import { GameStatus } from "@/class/game-status";
 import { GameLevel, type GameLevelConfig } from "@/class/game-level";
 
 import { ElButton, ElButtonGroup, ElMessageBox, ElIcon, ElTag } from 'element-plus';
 import { Clock, Flag, QuestionFilled } from '@element-plus/icons-vue'
 
-type CurrentGameLevel = GameLevelConfig
-
-const currentLevel = ref<CurrentGameLevel>(GameLevel.normal)
+const currentLevel = ref<GameLevelConfig>(GameLevel.normal)
 const game = ref(new Game(toRaw(currentLevel.value), ElMessageBox));
 
 const restartButtonDisabled = computed(() => {
@@ -19,7 +18,7 @@ onBeforeUnmount(() => {
   game.value?.stopTimer();
 })
 
-function toggleLevel(level: CurrentGameLevel) {
+function toggleLevel(level: GameLevelConfig) {
   if(!game.value) {
     return
   }
@@ -42,13 +41,13 @@ function toggleLevel(level: CurrentGameLevel) {
         </span>
       </div>
       <el-button-group class="difficulty-options">
-        <template v-for="level of GameLevel">
-          <el-button
-              :type="currentLevel.text === level.text ? 'primary' : 'default'"
-              :plain="currentLevel.text !== level.text"
-              @click="() => toggleLevel(level)"
-          >{{level.text}}</el-button>
-        </template>
+        <el-button
+            v-for="level of GameLevel"
+            :key="level.text"
+            :type="currentLevel.text === level.text ? 'primary' : 'default'"
+            :plain="currentLevel.text !== level.text"
+            @click="() => toggleLevel(level)"
+        >{{level.text}}</el-button>
       </el-button-group>
     </section>
     <table class="head">

@@ -1,19 +1,10 @@
 import Cell from "@class/cell";
 import { GameLevel, type GameLevelConfig } from "@class/game-level";
-import { CellLocation, initMines } from "@utils/utils";
+import { GameStatus } from "@class/game-status";
+import { initMines, type CellLocation } from "@utils/utils";
 import { SFCWithInstall } from "element-plus/es/utils/vue/typescript";
 import { IElMessageBox } from "element-plus/es/components/message-box/src/message-box.type";
 
-
-/** 当前对局所处的阶段。 */
-export enum GameStatus {
-  /** 棋盘已生成，但尚未首次有效点击。 */
-  Ready = "ready",
-  /** 已首次点击并布雷，对局正在进行。 */
-  Playing = "playing",
-  /** 对局已经结束（胜利或失败）。 */
-  Ended = "ended",
-}
 
 export default class Game {
   // 当前对局的难度、棋盘、首击状态和计时数据。
@@ -22,9 +13,12 @@ export default class Game {
   grid: Cell[][] = [];
   /** 当前游戏状态；用于区分未开始、进行中和已结束。 */
   status: GameStatus = GameStatus.Ready;
+  /** 首次有效左键点击后设为 true，防止重复布雷。 */
   firstClicked: boolean = false;
   /* mines count */
+  /** 尚未被正确插旗的真实地雷坐标。 */
   unflaggedMineLocations: CellLocation[] = [];
+  /** 剩余地雷显示值：总雷数减去所有旗子数，错误旗子也计入。 */
   unmarkMines: number = 0;
 
   messageBox: SFCWithInstall<IElMessageBox>;
@@ -90,6 +84,7 @@ export default class Game {
     if (this.firstClicked) return;
     this.firstClicked = true;
     // const totalCellsCount = this.grid.flat().length;
+    // 排除首次点击的格子，保证首击安全。
     const safeCells = new Set([
       `${targetCell.r},${targetCell.c}`,
       // 如果需要排除首次点击格子周围的8个格子, 则开启此行
@@ -104,24 +99,15 @@ export default class Game {
     // // 生成地雷坐标
     const mines = initMines(availableCells, this.level.m);
     // console.log("Mines", mines);
-    this.grid.forEach((row, rowIndex) => {
-      mines.forEach(([ r, c ]) => {
-        if (rowIndex === r) {
-          row[c].isMine = true;
-        }
+    // 从每颗地雷累加周围格子的数字，避免逐格重复搜索所有地雷。
+    mines.forEach(([ mineR, mineC ]) => {
+      const mineCell = this.grid[mineR][mineC];
+      mineCell.isMine = true;
+      mineCell.adjacentCells.forEach(([ adjacentR, adjacentC ]) => {
+        this.grid[adjacentR][adjacentC].adjacentMines += 1;
       });
     });
-    // 记录每个格子周围地雷数
-    this.grid.flat().forEach((cell) => {
-      cell.adjacentCells.forEach(([ adjacentCellX, adjacentCellY ]) => {
-        if (mines.some(([ mineR, mineC ]) => (
-            mineR === adjacentCellX && mineC === adjacentCellY
-        ))) {
-          cell.adjacentMines += 1;
-        }
-      });
-    });
-    // 初始化剩余雷数显示和记录所使用的计数。
+    // 首次布雷前放置的旗子也计入剩余地雷显示值。
     const flaggedCells = this.grid.flat().filter(cell => cell.mark === "flag");
     this.unmarkMines = mines.length - flaggedCells.length;
     this.unflaggedMineLocations = mines.filter(([ mineR, mineC ]) => (
@@ -129,6 +115,7 @@ export default class Game {
     ));
     // console.log(mines, this.grid);
     this.start();
+    // 首次点击前若已正确标记所有地雷，则布雷后立即判胜。
     if (this.unflaggedMineLocations.length === 0) {
       this.victory();
     }
@@ -137,10 +124,12 @@ export default class Game {
   // 成片打开格子的逻辑
   // 迭代展开空白区域；使用队列避免递归，旗子格会被跳过。
   expandCells(cells: Cell[] = []) {
+    // 直接点击的问号格可以打开；空白展开遇到的问号格保持标记。
+    const initialCells = new Set(cells);
     let pointer = 0;
     while (pointer < cells.length) {
       const cell = cells[pointer++];
-      if (!cell.opened && cell.mark !== "flag") {
+      if (!cell.opened && cell.mark !== "flag" && (initialCells.has(cell) || cell.mark === "none")) {
         cell.open();
 
         if (cell.adjacentMines === 0) {
@@ -173,7 +162,7 @@ export default class Game {
   victory() {
     if (this.status === GameStatus.Ended) return;
     this.stop();
-    alert("VICTORY");
+    this.messageBox.alert("VICTORY", { center: true });
   }
 
   // 清理计时和计数，再生成尚未布雷的新棋盘。
