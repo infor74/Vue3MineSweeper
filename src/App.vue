@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, toRaw } from "vue";
-import Game, { GameLevel, GameStatus } from "@/class/game";
+import Game, { GameStatus } from "@/class/game";
+import { GameLevel, type GameLevelConfig } from "@/class/game-level";
 
-import { ElButton, ElButtonGroup, ElMessageBox, ElIcon } from 'element-plus';
-import { Flag, QuestionFilled } from '@element-plus/icons-vue'
+import { ElButton, ElButtonGroup, ElMessageBox, ElIcon, ElTag } from 'element-plus';
+import { Clock, Flag, QuestionFilled } from '@element-plus/icons-vue'
 
-type CurrentGameLevel = typeof GameLevel[keyof typeof GameLevel]
+type CurrentGameLevel = GameLevelConfig
 
 const currentLevel = ref<CurrentGameLevel>(GameLevel.normal)
 const game = ref(new Game(toRaw(currentLevel.value), ElMessageBox));
@@ -30,27 +31,41 @@ function toggleLevel(level: CurrentGameLevel) {
 </script>
 
 <template>
-  <h2 style="margin-top: 8px">MineSweeper</h2>
   <div
       class="container"
   >
-    <el-button-group>
-      <template v-for="level of GameLevel">
-        <el-button
-            :type="currentLevel.text === level.text ? 'primary' : 'default'"
-            @click="() => toggleLevel(level)"
-        >{{level.text}}</el-button>
-      </template>
-    </el-button-group>
+    <section class="difficulty-panel">
+      <div class="difficulty-heading">
+        <span class="difficulty-label">难度</span>
+        <span class="difficulty-details">
+          {{ currentLevel.text }} · {{ currentLevel.r }} × {{ currentLevel.c }} · {{ currentLevel.m }} 雷
+        </span>
+      </div>
+      <el-button-group class="difficulty-options">
+        <template v-for="level of GameLevel">
+          <el-button
+              :type="currentLevel.text === level.text ? 'primary' : 'default'"
+              :plain="currentLevel.text !== level.text"
+              @click="() => toggleLevel(level)"
+          >{{level.text}}</el-button>
+        </template>
+      </el-button-group>
+    </section>
     <table class="head">
       <thead>
         <tr>
         <td width="50%"
             align="left"
         >
-          <span
+          <el-tag
               v-show="game.status !== GameStatus.Ready"
-              class="counter-board">剩余地雷: {{ game.unmarkMines }}</span>
+              type="danger"
+              effect="light"
+              class="game-indicator"
+          >
+            <el-icon><Flag /></el-icon>
+            <span>剩余地雷：{{ game.unmarkMines }}</span>
+          </el-tag>
         </td>
         <td align="center">
           <el-button
@@ -60,86 +75,144 @@ function toggleLevel(level: CurrentGameLevel) {
         <td width="50%"
             align="right"
         >
-          <span
+          <el-tag
               v-show="game.status !== GameStatus.Ready"
-              class="counter-board"
-          >耗时: {{ game.timerSeconds }}</span>
+              type="info"
+              effect="light"
+              class="game-indicator"
+          >
+            <el-icon><Clock /></el-icon>
+            <span>耗时：{{ game.timerSeconds }} 秒</span>
+          </el-tag>
         </td>
       </tr>
       </thead>
     </table>
-    <table v-if="game.grid.length"
-           class="grid-table"
-           @click.right.prevent.stop="() => {}"
-    >
-      <tbody>
-        <tr v-for="(row, i) in game.grid"
-            :key="i"
-        >
-          <td v-for="(cell, j) in row"
-              :key="j"
-              :class="`cell ${cell.opened ? 'opened' : 'default'} ${cell.mark}`"
-              @click.left="() => cell.handleLeftClick(game)"
-              @click.right.prevent="() => cell.handleRightClick(game)"
+    <div v-if="game.grid.length" class="grid-scroll">
+      <table
+          class="grid-table"
+          @click.right.prevent.stop="() => {}"
+      >
+        <tbody>
+          <tr v-for="(row, i) in game.grid"
+              :key="i"
           >
-              <span
-                  v-if="cell.opened && cell.adjacentMines"
-              >{{ cell.adjacentMines }}</span>
-            <el-icon
-                v-if="cell.mark !== 'none'"
+            <td v-for="(cell, j) in row"
+                :key="j"
+                :class="`cell ${cell.opened ? 'opened' : 'default'} ${cell.mark}`"
+                @click.left="() => cell.handleLeftClick(game)"
+                @click.right.prevent="() => cell.handleRightClick(game)"
             >
-              <Flag v-if="cell.mark === 'flag'" color="red" />
-              <QuestionFilled v-if="cell.mark === 'question'" color="sandybrown" />
-            </el-icon>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+                <span
+                    v-if="cell.opened && cell.adjacentMines"
+                >{{ cell.adjacentMines }}</span>
+              <el-icon
+                  v-if="cell.mark !== 'none'"
+              >
+                <Flag v-if="cell.mark === 'flag'" color="red" />
+                <QuestionFilled v-if="cell.mark === 'question'" color="sandybrown" />
+              </el-icon>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
-$dark-border: gray;
-$light-border: white;
+$dark-border: #909399;
+$light-border: #f1f1f1;
 $border-width: 4px;
-$bg: lightgray;
+$bg: #d3d4d6;
+$text-primary: #303133;
+$text-secondary: #606266;
+$cell-active-bg: #f5f7fa;
+$cell-open-border: #a8abb2;
+$spacing: 8px;
 
 .container {
+  display: flex;
+  flex-flow: column nowrap;
+  align-items: stretch;
+  justify-content: center;
   background: $bg;
   border-radius: 4px;
-  width: auto;
-  padding: 8px;
+  padding: $spacing;
+  border: $border-width solid;
+  border-color: $light-border $dark-border $dark-border $light-border;
 }
 
 .head {
-  padding: 1em 0;
+  margin: 0 0 $spacing;
+  padding: 0;
 }
 
-.counter-board {
-  border-radius: 3px;
-  padding: .5em 1em;
-  background: #08060d;
-  color: red;
-  font-weight: bold;
+.difficulty-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: $spacing;
+  border-radius: var(--el-border-radius-base);
+  background: $bg;
+}
+
+.difficulty-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+
+.difficulty-label {
+  color: $text-primary;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.difficulty-details {
+  color: $text-secondary;
+  font-size: 12px;
+}
+
+.difficulty-options {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.difficulty-options :deep(.el-button) {
+  width: 76px;
+}
+
+.game-indicator {
+  height: 32px;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+
+  :deep(.el-tag__content) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+  }
 }
 
 table {
   table-layout: fixed;
-  //border-collapse: collapse;
 }
 
-.grid {
-  &-table {
-    min-width: 400px;
-    min-height: 400px;
-    //background-color: $bg;
-    border-radius: 4px;
-    border: solid $border-width;
-    border-top-color: $dark-border;
-    border-left-color: $dark-border;
-    border-bottom-color: $light-border;
-    border-right-color: $light-border;
-  }
+.grid-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.grid-table {
+  min-width: 400px;
+  min-height: 400px;
+  border-radius: 4px;
+  border: $border-width solid;
+  border-color: $dark-border $light-border $light-border $dark-border;
 }
 
 .cell {
@@ -158,24 +231,17 @@ table {
 
   &.default {
     background-color: $bg;
-    border: solid $border-width;
-    border-right-color: $dark-border;
-    border-bottom-color: $dark-border;
-    border-left-color: $light-border;
-    border-top-color: $light-border;
+    border: $border-width solid;
+    border-color: $light-border $dark-border $dark-border $light-border;
 
     &:active {
-      background-color: whitesmoke;
-      border-top-color: $dark-border;
-      border-left-color: $dark-border;
-      border-bottom-color: $light-border;
-      border-right-color: $light-border;
+      background-color: $cell-active-bg;
+      border-color: $dark-border $light-border $light-border $dark-border;
     }
   }
 
   &.opened {
-    border: dashed 2px;
-    border-color: #aaa;
+    border: 2px dashed $cell-open-border;
   }
 }
 </style>

@@ -1,19 +1,9 @@
-﻿import Cell from "@class/cell";
+import Cell from "@class/cell";
+import { GameLevel, type GameLevelConfig } from "@class/game-level";
 import { CellLocation, initMines } from "@utils/utils";
 import { SFCWithInstall } from "element-plus/es/utils/vue/typescript";
 import { IElMessageBox } from "element-plus/es/components/message-box/src/message-box.type";
 
-export const GameLevel = {
-  easy: {
-    r: 9, c: 9, m: 10, text: "Easy",
-  },
-  normal: {
-    r: 16, c: 16, m: 16, text: "Normal",
-  },
-  hard: {
-    r: 16, c: 30, m: 30, text: "Hard",
-  },
-} as const;
 
 /** 当前对局所处的阶段。 */
 export enum GameStatus {
@@ -28,7 +18,7 @@ export enum GameStatus {
 export default class Game {
   // 当前对局的难度、棋盘、首击状态和计时数据。
   // id: string;
-  level: typeof GameLevel[keyof typeof GameLevel] = GameLevel.normal;
+  level: GameLevelConfig = GameLevel.normal;
   grid: Cell[][] = [];
   /** 当前游戏状态；用于区分未开始、进行中和已结束。 */
   status: GameStatus = GameStatus.Ready;
@@ -43,7 +33,7 @@ export default class Game {
   timerSeconds: number = 0;
 
   constructor(
-      level: typeof GameLevel[keyof typeof GameLevel] = GameLevel.easy,
+      level: GameLevelConfig = GameLevel.easy,
       messageBox: SFCWithInstall<IElMessageBox>,
   ) {
     // this.id = `MineSweeper-${new Date().getTime()}`;
