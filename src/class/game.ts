@@ -1,5 +1,5 @@
-import Cell from "@class/cell";
-import { initMines } from "@utils/utils";
+﻿import Cell from "@class/cell";
+import { CellLocation, initMines } from "@utils/utils";
 import { SFCWithInstall } from "element-plus/es/utils/vue/typescript";
 import { IElMessageBox } from "element-plus/es/components/message-box/src/message-box.type";
 
@@ -27,13 +27,15 @@ export enum GameStatus {
 
 export default class Game {
   // 当前对局的难度、棋盘、首击状态和计时数据。
-  id: string;
+  // id: string;
   level: typeof GameLevel[keyof typeof GameLevel] = GameLevel.normal;
   grid: Cell[][] = [];
   /** 当前游戏状态；用于区分未开始、进行中和已结束。 */
   status: GameStatus = GameStatus.Ready;
   firstClicked: boolean = false;
-  totalMines: number = 0;
+  /* mines count */
+  unflaggedMineLocations: CellLocation[] = [];
+  unmarkMines: number = 0;
 
   messageBox: SFCWithInstall<IElMessageBox>;
 
@@ -44,21 +46,36 @@ export default class Game {
       level: typeof GameLevel[keyof typeof GameLevel] = GameLevel.easy,
       messageBox: SFCWithInstall<IElMessageBox>,
   ) {
-    this.id = `MineSweeper-${new Date().getTime()}`;
+    // this.id = `MineSweeper-${new Date().getTime()}`;
     this.level = level;
     this.messageBox = messageBox;
 
     this.generateGrid();
   }
+  // 避免重复创建计时器。
+  startTimer() {
+    if (this.timerId !== null) return;
+    this.timerId = window.setInterval(() => {
+      this.timerSeconds += 1;
+    }, 1000);
+  }
+  stopTimer() {
+    if (this.timerId !== null) {
+      window.clearInterval(this.timerId);
+      this.timerId = null;
+    }
+  }
 
   // 游戏开始
   start() {
     this.status = GameStatus.Playing;
+    this.startTimer();
   }
 
   // 游戏结束
-  end() {
+  stop() {
     this.status = GameStatus.Ended;
+    this.stopTimer();
   }
 
   // 建立新棋盘，并重置“尚未首次点击”的状态。
@@ -114,11 +131,17 @@ export default class Game {
         }
       });
     });
-    // 初始化剩余雷数显示所使用的计数。
-    this.totalMines = mines.length;
+    // 初始化剩余雷数显示和记录所使用的计数。
+    const flaggedCells = this.grid.flat().filter(cell => cell.mark === "flag");
+    this.unmarkMines = mines.length - flaggedCells.length;
+    this.unflaggedMineLocations = mines.filter(([ mineR, mineC ]) => (
+      this.grid[mineR][mineC].mark !== "flag"
+    ));
     // console.log(mines, this.grid);
-    // 开始计时
-    this.startTimer();
+    this.start();
+    if (this.unflaggedMineLocations.length === 0) {
+      this.victory();
+    }
   }
 
   // 成片打开格子的逻辑
@@ -141,24 +164,9 @@ export default class Game {
     }
   }
 
-  stopTimer() {
-    if (this.timerId !== null) {
-      window.clearInterval(this.timerId);
-      this.timerId = null;
-    }
-  }
-
-  // 当前实现会在 timerId 为空时提前返回；请留意此处的启动条件。
-  startTimer() {
-    if (this.timerId == null) return;
-    this.timerId = window.setInterval(() => {
-      this.timerSeconds += 1;
-    }, 1000);
-  }
-
   // 踩雷时停止计时，并在失败提示确认后重置对局。
   over() {
-    this.stopTimer();
+    this.stop();
     // alert('GAME OVER')
     this.messageBox.alert(
         "GAME OVER",
@@ -173,15 +181,18 @@ export default class Game {
 
   // 胜负条件由调用方决定；此处仅显示胜利提示并停止计时。
   victory() {
+    if (this.status === GameStatus.Ended) return;
+    this.stop();
     alert("VICTORY");
-    this.stopTimer();
   }
 
   // 清理计时和计数，再生成尚未布雷的新棋盘。
   reset() {
     this.stopTimer();
     this.timerSeconds = 0;
-    this.totalMines = 0;
+    this.unflaggedMineLocations = [];
+    this.unmarkMines = 0;
+    this.status = GameStatus.Ready;
     this.generateGrid();
   }
 }

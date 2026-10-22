@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, toRaw } from 'vue';
-import Game, { GameLevel }from '@/class/game';
+import { computed, onBeforeUnmount, ref, toRaw } from "vue";
+import Game, { GameLevel, GameStatus } from "@/class/game";
 
 import { ElButton, ElButtonGroup, ElMessageBox, ElIcon } from 'element-plus';
 import { Flag, QuestionFilled } from '@element-plus/icons-vue'
@@ -10,12 +10,19 @@ type CurrentGameLevel = typeof GameLevel[keyof typeof GameLevel]
 const currentLevel = ref<CurrentGameLevel>(GameLevel.normal)
 const game = ref(new Game(toRaw(currentLevel.value), ElMessageBox));
 
+const restartButtonDisabled = computed(() => {
+  return game.value.status === GameStatus.Ready
+})
+
 onBeforeUnmount(() => {
   game.value?.stopTimer();
 })
 
 function toggleLevel(level: CurrentGameLevel) {
-  game.value?.stopTimer();
+  if(!game.value) {
+    return
+  }
+  game.value.stop();
   currentLevel.value = level;
   game.value = new Game(level, ElMessageBox);
 }
@@ -41,15 +48,22 @@ function toggleLevel(level: CurrentGameLevel) {
         <td width="50%"
             align="left"
         >
-          <span class="counter-board">剩余地雷: {{ game.totalMines }}</span>
+          <span
+              v-show="game.status !== GameStatus.Ready"
+              class="counter-board">剩余地雷: {{ game.unmarkMines }}</span>
         </td>
         <td align="center">
-          <el-button @click="() => game.reset()">重新开始</el-button>
+          <el-button
+              :disabled="restartButtonDisabled"
+              @click="() => game.reset()">重新开始</el-button>
         </td>
         <td width="50%"
             align="right"
         >
-          <span class="counter-board">耗时: {{ game.timerSeconds }}</span>
+          <span
+              v-show="game.status !== GameStatus.Ready"
+              class="counter-board"
+          >耗时: {{ game.timerSeconds }}</span>
         </td>
       </tr>
       </thead>

@@ -1,13 +1,17 @@
-import Game from '@class/game'
+﻿import Game, { GameStatus } from '@class/game'
 import { recordAdjacentCellsLocation } from "@utils/utils";
 
-type CellMark = 'none' | 'flag' | 'question'
+enum CellMark {
+    None = 'none',
+    Flag = 'flag',
+    Question = 'question',
+}
 
 export default class Cell {
     r = NaN;
     c = NaN;
     // flag = false;
-    mark: CellMark = 'none';
+    mark: CellMark = CellMark.None;
     isMine = false;
     opened = false;
     adjacentCells: [ number, number ][] = [];
@@ -25,13 +29,14 @@ export default class Cell {
 
     open() {
         this.opened = true;
-        this.mark = 'none';
+        this.mark = CellMark.None;
     }
 
     handleLeftClick(game: Game) {
+        if (game.status === GameStatus.Ended) return
         // console.log(this.r, this.c);
-        if (this.mark === 'flag' || this.opened) return
-        // 首次点击, 更新标识, 生成地雷
+        if (this.mark === CellMark.Flag || this.opened) return
+        // 棣栨鐐瑰嚮, 鏇存柊鏍囪瘑, 鐢熸垚鍦伴浄
         if (!game.firstClicked) {
             game.generateMines(this);
         }
@@ -45,24 +50,41 @@ export default class Cell {
     }
 
     handleRightClick(game: Game) {
-        if (this.opened) {
-            return
-        }
-        const markList: CellMark[] = [ 'none', 'flag', 'question' ];
-        let currentIndex = markList.findIndex(item => item === this.mark);
-        if (currentIndex === markList.length - 1) {
-            currentIndex = -1;
-        }
-        this.mark = markList[currentIndex + 1]
-        if (!game.firstClicked) return
-        if (game.totalMines > 0 && this.mark === 'flag') {
-            game.totalMines -= 1
-            if (game.totalMines === 0) {
-                game.victory();
-                return;
-            }
-        } else if (this.mark === 'question') {
-            game.totalMines += 1
+        if (game.status === GameStatus.Ended || this.opened) return
+
+        // 按当前标记状态轮转；只有布雷后才更新剩余雷数和真实地雷记录。
+        switch (this.mark) {
+            case CellMark.None:
+                // 无标记切换为旗子，减少未标记雷数。
+                this.mark = CellMark.Flag;
+                if (!game.firstClicked) return
+
+                game.unmarkMines -= 1;
+                if (this.isMine) {
+                    // 正确标记真实地雷后，从待确认地雷列表中移除。
+                    game.unflaggedMineLocations = game.unflaggedMineLocations.filter(([ r, c ]) => (
+                        r !== this.r || c !== this.c
+                    ));
+                    if (game.unflaggedMineLocations.length === 0) game.victory();
+                }
+                break;
+
+            case CellMark.Flag:
+                // 旗子切换为问号，恢复未标记雷数。
+                this.mark = CellMark.Question;
+                if (!game.firstClicked) return
+
+                game.unmarkMines += 1;
+                if (this.isMine) {
+                    // 取消真实地雷上的旗子后，重新加入待确认列表。
+                    game.unflaggedMineLocations.push([ this.r, this.c ]);
+                }
+                break;
+
+            case CellMark.Question:
+                // 问号切换为空标记，不影响计数。
+                this.mark = CellMark.None;
+                break;
         }
     }
 }

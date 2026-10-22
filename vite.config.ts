@@ -11,8 +11,6 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 import vue from '@vitejs/plugin-vue'
 
-// import { resolve } from 'path'
-
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
     const { VITE_PUBLIC_PATH } = loadEnv(mode, process.cwd(), "") as unknown as ImportMetaEnv

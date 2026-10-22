@@ -5,8 +5,6 @@ export function recordAdjacentCellsLocation(
     [ r, c ]: [ number, number ],
     [ maxR, maxC ]: [ number, number ],
 ) {
-  let currentRow = [];
-  let nextRow = [];
   return [
     [ r - 1, c - 1 ], [ r - 1, c ], [ r - 1, c + 1 ],
     [ r, c - 1 ], [], [ r, c + 1 ],
@@ -35,7 +33,7 @@ function shuffle<T>(
 * 打乱顺序
 * 再取前n项生成地雷
 */
-type CellLocation = [ number, number ];
+export type CellLocation = [ number, number ];
 
 export function initMines(
     source: CellLocation[],
